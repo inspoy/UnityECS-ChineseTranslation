@@ -12,11 +12,11 @@ ECS建立于一系列原则之上。这些原则为我们要实现的目标提�
 
 * 数据布局和迭代 - ECS在默认情况下在批量迭代实体时保证数据布局在内存中是线性的。而这就是ECS带来的性能提升的关键因素。
 * C# job system 使编写安全的多线程代码变得很简单。C# Job调试器会检测所有的线程竞争条件。
-* Burst is our compiler specifically for C# jobs. C# job code follows certain patterns that we can use to produce more efficient machine code. Code is compiled & optimized for each target platforms taking advantage of SIMD instructions.
+* Burst是我们专为C# jobs准备的编译器。我们让C# job代码遵循一些模式，就能生成更高效的机器码。代码在各个平台上的编译和优化都使用了SIMD指令集。
 
-An example of this is the performance of Instantiation. Comparing to the theoretical limit, of instantiating 100.000 entities with 320 bytes of a memcpy takes 9ms. Instantiating those entities via the Entity Component System takes 10ms. So we are very close to the theoretical lmit.
+拿实例化的性能为例。根据理论上的限制，实例化10万个实体（每个320字节的内存分配）需要9毫秒，而用ECS来实现也只需要10毫秒。所以我们的性能已经非常接近理论上限了。
 
-At Unite Austin we showcased a demo with 100.000 individual units in a massive battle simulation running at 60 FPS. All game code was running multicore.
+我们在Unite奥斯汀上展示了一个包含10万个独立实体还能跑到60fps的战争模拟的Demo。所有的业务代码都跑在多个CPU核心上。
 [See ECS performance demo [Video]](https://www.youtube.com/watch?v=0969LalB7vw)
 
 ## 简单
@@ -25,11 +25,12 @@ At Unite Austin we showcased a demo with 100.000 individual units in a massive b
 
 > Note: 为了设定正确的预期，我们认为仍然有一些方法可以实现这一目标。
 
-## One way of writing code
+## 用同一种方式写代码
 
-We want to define a single way of writing game code, editor code, asset pipeline code, engine code. We believe this creates a simpler tool for our users, and more ability to change things around.
+我们想找到一种可以同时编写游戏代码，编辑器代码，资产管线代码和引擎代码的方式。我们相信这样可以给用户提供一个更简单，更强大的工具。
 
-Physics is a great example. Currently Physics is a black box solution. In practice many developers want to tweak the simulation code to fit it to their games needs. If physics engine code was written the same way as game code using ECS, it would make it easy to plug your own simulation code between existing physics simulation stages or take full control.
+物理系统就是一个绝佳的例子。目前物理相关的代码对开发者是不可见的，很多开发者都想基于他们游戏的需求来微调一下这些物理代码。如果物理引擎的代码
+ If physics engine code was written the same way as game code using ECS, it would make it easy to plug your own simulation code between existing physics simulation stages or take full control.
 
 Another example, lets imagine you want to make a heavily moddable game.
 
