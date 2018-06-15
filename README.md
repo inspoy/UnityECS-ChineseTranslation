@@ -1,6 +1,7 @@
 ![Unity](https://unity3d.com/files/images/ogimg.jpg?1)
 > 本文由[Inspoy](http://inspoy.cc)出于个人兴趣进行翻译，水平有限难免出现翻译错误，语句不通顺，语序错乱崩坏。。而且也许不能及时更新到最新的官方版本，最重要的是，随时可能弃坑←_←
 
+* [原文链接](https://github.com/Unity-Technologies/EntityComponentSystemSamples/blob/master/Documentation/index.md)
 * 对应官方版本：Release 6
 
 # 实体-组件-系统（ECS）用户手册
