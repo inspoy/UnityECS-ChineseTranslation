@@ -1,4 +1,4 @@
-# 实体-组件-系统（ECS）原理
+# 实体-组件-系统（ECS）原理和概览
 
 ECS建立于一系列原则之上。这些原则为我们要实现的目标提供了良好的基础。一些原则非常清晰地反映在代码里，而另一些只是我们为自己设定的目标。
 
@@ -21,97 +21,95 @@ ECS建立于一系列原则之上。这些原则为我们要实现的目标提�
 
 ## 简单
 
-编写高性能([performant](https://en.wiktionary.org/wiki/performant))必须十分容易。我们坚信，编写高性能的代码就像写__MonoBehaviour.Update__一样容易。
+编写高性能([performant](https://en.wiktionary.org/wiki/performant))必须十分容易。我们坚信，编写高性能的代码就像写 __MonoBehaviour.Update__ 一样容易。
 
-> Note: 为了设定正确的预期，我们认为仍然有一些方法可以实现这一目标。
+> Note: 为了让大家有正确地预期，我们认为仍然有一些方法可以实现这一目标。
 
 ## 用同一种方式写代码
 
 我们想找到一种可以同时编写游戏代码，编辑器代码，资产管线代码和引擎代码的方式。我们相信这样可以给用户提供一个更简单，更强大的工具。
 
-物理系统就是一个绝佳的例子。目前物理相关的代码对开发者是不可见的，很多开发者都想基于他们游戏的需求来微调一下这些物理代码。如果物理引擎的代码
- If physics engine code was written the same way as game code using ECS, it would make it easy to plug your own simulation code between existing physics simulation stages or take full control.
+物理系统就是一个绝佳的例子。目前物理相关的代码对开发者是不可见的，很多开发者都想基于他们游戏的需求来微调一下这些物理代码。如果物理引擎的代码跟游戏业务逻辑一样使用ECS，那么在现存的物理模拟代码中嵌入你自己的逻辑或者直接实现为你的版本就会变得非常容易。
 
-Another example, lets imagine you want to make a heavily moddable game.
+另一个例子，假如你想搞一个重度依赖MOD的游戏。
 
-If our import pipeline is implemented as a set of __ComponentSystems__. And we have some FBX import pipeline code that is by default used in the asset pipeline to import and postprocess an FBX file. (Mesh is baked out and FBX import code used in the editor.)
+如果我们的导入管线也被实现为 __ComponentSystems__ 的一部分，我们还有一些在资产管线中默认用于导入和FBX文件的后处理的FBX导入管线相关的代码（在编辑器中使用网格和FBX导入代码）。
 
-Then it would be easy to configure the Package Manager that the same FBX import and postprocessing code could be used in a deployed game for the purposes of modding.
+然后配置包管理器就会变得很容易，已部署的游戏中就能使用相同的FBX的导入和后处理代码来实现MOD了。
 
-We believe this will, at the foundation level, make Unity significantly more flexible than it is today.
+我们相信可以在架构层面上使Unity比现在更加灵活。
 
-## Networking
+## 网络
 
-We want to define one simple way of writing all game code. When following this approach, your game can use one of three network architectures depending on what type of game you create.
+我们想用一种简单的方式来编写所有的游戏代码，遵循这种方法，根据你游戏的类型，可以使用一下三种网络架构之一。
 
-We are focused on providing best of class network engine support for hosted games. Using the recently acquired [Multiplay.com](http://Multiplay.com) service we offer a simple pipeline to host said games.
+我们专注于为托管的游戏提供最好的网络引擎。使用我们最新提供的[Multiplay.com](http://Multiplay.com)服务托管下述游戏。
 
-* FPS - Simulation on the server
-* RTS - Deterministic lock step simulation
-* Arcade games - GGPO
+* 第一人称射击（FPS） - 在服务器上进行模拟
+* 即时战略（RTS） - 精确的帧同步模拟
+* 街机游戏 - GGPO
 
-> Note: To set expectations right, we are not yet shipping any networking code on top of Entity Component System. It is work in progress.
+> Note: 为了让大家有正确地预期，我们还没有在ECS系统中提供任何网络代码。 这个我们还在开发中。
 
-## Determinism
+## 确定性
 
-Our build pipeline must be [deterministic](https://en.wikipedia.org/wiki/Deterministic_algorithm). Users can choose if all simulation code should run deterministically.
+我们的构建管线必须是 [确定性的](https://en.wikipedia.org/wiki/Deterministic_algorithm). 用户可以选择是否所有模拟代码都以确定性的方式运行。
 
-You should always get the same results with the same inputs, no matter what device is being used. This is important for networking, replay features and even advanced debugging tools.
+无论使用什么设备，你对于同样的输入应该总是得出同样的结果。这点对于网络编程，重放功能甚至高级的调试工具都是十分重要的。
 
-To do this we will leverage our Burst compiler to produce exact floating point math between different platforms. Imagine a linux server & iOS device running the same floating point math code. This is useful for many scenarios particularly for connected games, but also debugging, replay etc. 
+为此我们将利用Burst编译器来在不同的平台上进行同样精确的浮点数运算。比如说在Linux服务器和iOS客户端上运行着同样的浮点数运算。这对于许多场景都十分有用，尤其是网络游戏，但也包括调试和重放等。
 
-> Note: Floating point math discrepancies is a problem that Unity decided to tackle head on. This issue has been known about for some time, but so far there has not been a need great enough to encourage people to solve it. For some insight into this problem, including some of the workarounds needed to avoid solving it, consider reading [Floating-Point Determinism by Bruce Dawson](https://randomascii.wordpress.com/2013/07/16/floating-point-determinism/).
+> Note: 浮点数精度问题是Unity决定要去处理的。虽然这个问题已经存在一定时间了，然而至今为止也没有充分的需求来鼓励人们去解决这个问题。有关此问题的一些深入见解，包括避免此类问题所需的一些解决方法，可以考虑了解一下[Floating-Point Determinism by Bruce Dawson](https://randomascii.wordpress.com/2013/07/16/floating-point-determinism/).
 
-## Sandbox
+## 沙盒
 
-Unity is a sandbox, safe and simple.
+Unity是一个既安全又简单的沙盒环境。
 
-We provide great error messages when API's are used incorrectly, we never put ourselves in a position where incorrect usage results in a crash and that is by design (as opposed to a bug we can quickly fix).
+当API没有被正确使用时，我们会提供详尽的错误信息。我们从来不会让任何不正确的调用导致崩溃，设计就是如此（而不是我们可以快速修复的bug）。
 
-A good example of sandbox behaviour is that our C# job system guarantees that none of your C# job code has race conditions. We deterministically check all possible race conditions through a combination of static code analysis & runtime checks. We give you well written error messages about any race conditions right away. So you can trust that your code works and feel safe that even developers who write multithreaded game code for the first time will do it right.
+一个沙盒的绝佳的例子是我们的C# job system保证你所有的C# job代码都没有竞争条件。我们会通过结合静态代码分析和运行时检查来很确定地检查所有可能的竞争条件。我们会立即为你提供有关任何竞争条件的易读的错误信息。所以，即使是第一次编写多线程游戏代码的开发人员，也可以放心相信您的代码能够正常并且安全地工作。
 
-## Tiny
+## 短小精悍
 
-We want Unity to be usable for all content from < 50kb executables + content, to gigabyte sized games. We want Unity to load in less than 1 second for small content.
+我们希望Unity可以用于小至50KB，大至GB级别的所有游戏内容。对于小东西，我们想让Unity在1秒之内完成加载。
 
-## Iteration time
+## 迭代时间
 
-We aim to keep iteration time for any common operations in a large project folder below 500ms.
+我们致力于将大型项目目录中的常见操作的迭代时间保持在小于500ms。
 
-As an example we are working on rewriting the C# compiler to be fully incremental with the goal of:
+例如，我们正在努力重写C#编译器，以实现完全的增量编译，目标是：
 
-> When changing a single .cs file in a large project. The combined compile and hot reload time should be less than 500ms.
+> 在一个大型项目中，当你只改变一个.cs源文件时，编译+热重载的时间要小于500ms。
 
-## Our code comes with full unit test coverage
+## 我们的代码自带全覆盖的单元测试
 
-We believe in shipping robust code from the start. We use unit tests to prove that our code works correctly when it is written and committed by the developer. Tests are shipped as part of the packages.
+我们致力于从一开始就提供健壮的代码。我们使用单元测试来保证我们的代码在开发过程中能保持正确工作。测试代码将被作为包的一部分一并提供给大家。
 
-## Evolution
+## 进化
 
-We are aware that we are proposing a rather large change in how to write code. From MonoBehaviour.Update to ComponentSystem & using jobs.
+我们知道，我们对于编写代码的方式正在提出一个相当大的改变。即从MonoBehaviour.Update转变到ComponentSystem和Job。
 
-We believe that ultimately the only thing that convinces a game developer is trying it and seeing the result with your own eyes, on your own game. 
+我们相信，最终让开发者信服的唯一方法就是去在自己的游戏里尝试并亲眼看到结果。
 
-Thus it is important that applying the ECS approach on an existing project should be easy and quick to do. Our goal is that within 30 minutes a user can, in a large project, change some code from MonoBehaviour.Update to ComponentSystem and have a successful experience optimizing his game code.
+所以重点是要让ECS很容易且快捷地应用于现有项目。我们的目标是30分钟内就能把一个大型项目中的一些MonoBehavior.Update改为ComponentSystem实现，还能让他有一个优化他游戏代码的成功经验。
 
-## Packages
+## 包
 
-We want the majority of our engine code to be written in C# and deployed in a Package. All source code is available to all Unity Pro customers.
+我们希望大部分的引擎代码都用C#实现并且部署于一个包中。所有Unity Pro的订阅客户都可以访问所有源码。
 
-We want a rapid feedback loop with customers, given that we can push code and get feedback on something quickly in a package without destabilizing other parts.
+我们希望可以同客户建立快速反馈的闭环，因为我们可以在不破坏其他部分的稳定性的前提下推送新的代码并同时获得反馈。
 
-Previously most of our engine code was written in C++, which creates a disconnect with how our customers write code and how programmers at Unity write code. Due to the Burst compiler tech & ECS, we can achieve better than C++ with C# code and as a result we can all write code exactly the same way.
+之前大部分引擎代码都是用C++实现的，这导致Unity的程序员和我们客户编写代码的方式产生了脱节。归功于Burst编译器技术和ECS，我们用C#可以比C++有更好的实现，最终结果就是我们就能以相同的方式来编写所有的代码了。
 
-## Collaboration
+## 协作
+我们相信Unity的用户的开发Unity的人可以在同一个团队中协作。我们的目标是帮助所有Unity的用户能以更高质量，优秀的性能来快速创建最好的游戏体验。
 
-We believe Unity users and Unity developers are all on the same team. Our purpose is to help all Unity users create the best game experiences faster, in higher quality, and with great performance. 
+我们相信我们开发的任何功能都必须基于真实场景和来自真实生产环境的反馈来进行开发。包管理器（Package Manager）促进了这一点。
 
-We believe every feature we develop must be developed with real scenarios and real production feedback early on. The Package Manager facilitates that.
+对于社区里那些想贡献引擎代码的人，我们的目标是让贡献者直接在跟我们一样的代码库上进行提交。通过明确的规则和覆盖全面的测试代码，我们希望保持社区贡献的代码也有同样高的质量。
 
-For those in the community that want to contribute engine code, we aim to make that easy by working directly on the same code repositories that contributors can commit to as well. Through well defined principles and full test coverage of all features, we hope to keep the quality of contributions high as well. 
+所有Unity Pro的订阅客户都可以访问上述代码库。
 
-The source code repositories will be available for all Unity Pro Customers.
+## 透明公开
 
-## Transparency
-
-We believe in transparency. We develop our features in the open, we actively communicate on both forum and blogs. We reserve time so each developer can spend time with customers and understand our users pain points.
+我们信仰透明。我们开发功能的过程始终是在论坛和博客上透明公开的。我们会保留时间以便每位开发者可以花时间了解我们用户的痛点。
