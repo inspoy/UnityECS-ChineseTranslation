@@ -123,50 +123,42 @@ PlayerMoveSystem处理从PlayerInputSystem中获得的基础移动和射击信�
 
 对于敌人相关的System，最有趣的一个就是EnemySpawnSystem了。它需要持续追踪生成敌人的时刻，但我们不想把这些状态放到System里。ECS的设计原则之一是应该记录组件的状态并稍后可以重建场景。存储一些状态变量用于帧与帧之间是违反这一原则的。
 
-作为替代，EnemySpawnSystem把它的状态存储在了一个单例Entity上的组件中。
+作为替代，EnemySpawnSystem把它的状态存储在了一个单例实体上的组件中。我们在 __EnemySpawner.SetupComponentData()__ 函数中创建和初始化了这些实体和组件。这里我们还初始化了一个随机种子和其他数据一起存储起来，来让游戏可以任何时刻都可预期地生成敌人，无论帧率如何或者是replay之类的情况。
 
-The EnemySpawnSystem instead stores its state in a singleton component, attached to a singleton Entity. We create the Entity and the initial values for this component in a setup function __EnemySpawner.SetupComponentData()__. Here we also initialize a random seed and store that along with the rest of the data, so that games will predictably spawn enemies in the same pattern every time, regardless of frame rate or if something fancy like state replay is happening.
+在EnemySpawnSystem内部，由于 **ref return** 特性还不被支持，我们现在不得不从单个的 __State__ 数组中拷贝一份系统状态，然后我们下一帧修改它的时候，再将其储存回Component当中。
 
-Inside the EnemySpawnSystem, due to **ref return** not being implemented yet, we have to take a copy of our system's state from the singular __State__ array, and then when we've  modified it for the next frame, we store it back into the component.
+这可能看起来像是一堆样板化的东西（确实也是），但以不同的方式思考这个问题也时挺有意思的。如果我们将State更名为“Wave”并且一次更新不止一个，并由其他系统来安排，该怎么样？我们将在得到多个同时进行的“Wave”在生成和更新。与使用连接到系统的全局数据相比，ECS使这些转换变得更加简单和清晰。
 
-This may look like a lot of boilerplate (and it is) but it's also kind interesting to think about this in a different way. What if we renamed State to "Wave" and updated more than one of them at a time, orchestrated by some other system? We would get multiple simultaneous "Waves" spawning and updating in concert. ECS makes these sort of transformations much easier and cleaner than if we had used global data attached to the system. 
+一个巧合是，我们必须延迟生成Entity，直到我们完成了存储上述Component状态的步骤，因为涉及EntityManager的操作会立即使我们注入的数据（包括我们保存的状态！）无效。我们的一个解决方案是使用[CommandBuffer](https://docs.unity3d.com/ScriptReference/Rendering.CommandBuffer.html)（通过 __EntityCommandBuffer__ - 但CommandBuffer还不支持用于设置渲染外观的 __ISharedComponentData__。）
 
-One quirk is that we have to put off actually spawning an Entity until we've completed the above step of storing back our component state, because touching the EntityManager will
-immediately invalidate all injected arrays (including the one where our state is kept!). Our
-solution to this is [command buffers](https://docs.unity3d.com/ScriptReference/Rendering.CommandBuffer.html) 
-(via __EntityCommandBuffer__ - but command buffers don't yet support __ISharedComponentData__, which is needed here to set the rendered look.)
+敌人使用内置的 __MoveForward__ 组件来自动移动，我们就不用操心了。
 
-Enemies move automatically using the stock __MoveForward__ component, so that's taken care of.
+我们还是要让敌人来射出子弹，而EnemyShootSystem就负责这个。跟玩家的子弹一并，它也会创建ShotSpawnData，稍后才会被转化成真正的子弹。
 
-We need them to shoot however, and EnemyShootSystem does just that. It creates entities with ShotSpawnData data on them that will be converted to shots later; together with any player shots.
+最后我们还得避免敌人跑出屏幕外。__EnemyRemovalSystem__ 会遍历所有敌人的位置，并把那些已经跑出屏幕的敌人的血量设为-1。
 
-Finally we also need a way to get rid of enemies that go offscreen. __EnemyRemovalSystem__
-goes through all enemy positions and kills offscreen enemies by setting their health to -1.
+### 处理子弹
 
-### Handling shots
+ShotSpawnSystem负责根据玩家和敌人丢进ECS的创建请求来创建真正的子弹。这是个简单直接的事情，直接遍历所有ShotSpawnData并将它们转换成子弹就行了。
 
-ShotSpawnSystem deals with creating actual shots from the requests dropped into the ECS by players and enemies. This is a simple straightforward affair that just loops over all ShotSpawnData and converts them into shots.
+更有趣的是ShotDamageSystem，它处理子弹和目标之间的碰撞并造成伤害。这里用到了4个注入数组：
 
-More interesting is ShotDamageSystem, which intersects bullets and targets and deals damage. This uses 4 injected groups:
+* 玩家
+* 玩家射出的子弹
+* 敌人
+* 敌人射出的子弹
 
-* Players
-* Shots fired by players
-* Enemies
-* Shots fired by enemies
+这样就能开展两项任务：
 
-This way it can kick off two jobs:
+* 玩家 vs 敌人的子弹
+* 敌人 vs 玩家的子弹
 
-* Players vs enemy shots
-* Enemies vs player shots
+> 该系统使用了圆形碰撞测试。
 
-It uses a very simplistic point against circle collision test.
+我们还要小心那些什么都没打到直接飞走的子弹。当这些子弹的寿命归零时，我们让ShotDestroySystem来移除它们。
 
-We also need to get rid of shots that didn't hit anything and just fly off. When their time to
-live goes to zero, we let ShotDestroySystem remove them.
+### 最后几件事
 
-### Final pieces
+我们还要把那些已经死掉的对象干掉，RemoveDeadSystem就是做这个事儿的。
 
-We need something that culls dead objects from the world, and RemoveDeadSystem does just
-that.
-
-Finally, we want to display some data about the player's health on the screen and UpdatePlayerHUD accomplishes this task.
+最后，我们想把关于玩家血量相关数据显示在屏幕上，UpdatePlayerHUD来完成这项任务。
